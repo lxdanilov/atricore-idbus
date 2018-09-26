@@ -42,15 +42,18 @@ import org.atricore.idbus.capabilities.sso.main.SSOException;
 import org.atricore.idbus.capabilities.sso.main.claims.SSOCredentialClaimsRequest;
 import org.atricore.idbus.capabilities.sso.main.claims.SSOCredentialClaimsResponse;
 import org.atricore.idbus.capabilities.sso.main.common.AbstractSSOMediator;
+import org.atricore.idbus.capabilities.sso.main.common.ChannelConfiguration;
 import org.atricore.idbus.capabilities.sso.main.common.producers.SSOProducer;
 import org.atricore.idbus.capabilities.sso.main.emitter.SamlR2SecurityTokenEmissionContext;
 import org.atricore.idbus.capabilities.sso.main.emitter.plans.SamlR2SecurityTokenToAuthnAssertionPlan;
 import org.atricore.idbus.capabilities.sso.main.idp.IdPSecurityContext;
 import org.atricore.idbus.capabilities.sso.main.idp.IdentityProviderConstants;
+import org.atricore.idbus.capabilities.sso.main.idp.SPChannelConfiguration;
 import org.atricore.idbus.capabilities.sso.main.idp.SSOIDPMediator;
 import org.atricore.idbus.capabilities.sso.main.idp.plans.IDPInitiatedAuthnReqToSamlR2AuthnReqPlan;
 import org.atricore.idbus.capabilities.sso.main.idp.plans.SamlR2AuthnRequestToSamlR2ResponsePlan;
 import org.atricore.idbus.capabilities.sso.main.select.spi.EntitySelectorConstants;
+import org.atricore.idbus.capabilities.sso.main.sp.IDPChannelConfiguration;
 import org.atricore.idbus.capabilities.sso.main.sp.SSOSPMediator;
 import org.atricore.idbus.capabilities.sso.support.SAMLR2Constants;
 import org.atricore.idbus.capabilities.sso.support.SSOConstants;
@@ -526,11 +529,17 @@ public class SingleSignOnProducer extends SSOProducer {
                     ServiceProvider spProxy = (ServiceProvider) bChannel.getProvider();
                     FederationService spProxySvc = spProxy.getDefaultFederationService();
 
+                    if (logger.isTraceEnabled())
+                        logger.trace("Processing PreAuthenticatedAuthnRequest as proxy: " +
+                                "binding-channel ["+ bChannel.getName()+"] " +
+                                "sp-proxy [" + spProxy.getName() + "] " +
+                                "sp-proxy-svc [" + spProxySvc.getName() + "]");
+
                     // Internal/Proxied IdP
                     IdentityProvider idp = null;
                     String idpAlias = ((SSOSPMediator) bChannel.getIdentityMediator()).getPreferredIdpAlias();
 
-                    // Look for the target IdP in an overrided channel
+                    // Look for the target IdP in an overridden channel
                     for (FederationChannel fChannel : spProxySvc.getOverrideChannels()) {
                         if (fChannel.getTargetProvider() == null) {
                             logger.error("Channel MUST have a target provider " + fChannel.getName());
@@ -545,7 +554,8 @@ public class SingleSignOnProducer extends SSOProducer {
                                     idp = (IdentityProvider) fp;
                                     idpChannelProxy = (IdPChannel) fChannel;
                                     if (logger.isDebugEnabled())
-                                        logger.debug("FoundTarget IdP [" + idp.getName() + "] for SP Proxy [" + spProxy.getName() + "] in " + idpChannelProxy.getName());
+                                        logger.debug("Found Target IdP [" + idp.getName() + "] for SP Proxy [" +
+                                                spProxy.getName() + "] in overridden channel [" + idpChannelProxy.getName() + "]");
                                     break;
                                 } else {
                                     logger.error("Preferred IdP " + idpAlias + " is not local, cannot use Proxied pre-authn requests");
@@ -571,7 +581,8 @@ public class SingleSignOnProducer extends SSOProducer {
                                         idp = (IdentityProvider) fp;
                                         idpChannelProxy = (IdPChannel) spProxySvc.getChannel();
                                         if (logger.isDebugEnabled())
-                                            logger.debug("FoundTarget IdP [" + idp.getName() + "] for SP Proxy [" + spProxy.getName() + "] in " + idpChannelProxy.getName());
+                                            logger.debug("Found Target IdP [" + idp.getName() + "] for SP Proxy [" +
+                                                    spProxy.getName() + "] in  default channel [" + idpChannelProxy.getName() + "]");
                                         break;
                                     } else {
                                         logger.error("Preferred IdP " + idpAlias + " is not local, cannot use Proxied pre-authn requests");
@@ -591,8 +602,9 @@ public class SingleSignOnProducer extends SSOProducer {
                     EndpointDescriptor proxyEndpoint = resolveIDPInitiatedSSOProxyEndpointDescriptor(exchange, spProxy, idp);
 
                     // Send IdP initiated pre-authn request (using proxy SP as response-to
-                    PreAuthenticatedIDPInitiatedAuthnRequestType authnProxyRequest = buildPreAuthenticatedIDPInitiatedAuthnProxyRequest(exchange,
-                            spProxy.getDefaultFederationService().getChannel().getMember(),  // Default SP alias
+                    PreAuthenticatedIDPInitiatedAuthnRequestType authnProxyRequest = buildPreAuthenticatedIDPInitiatedAuthnProxyRequest(
+                            exchange,
+                            idpChannelProxy.getMember(),  // Use IDP channel alias!
                             (PreAuthenticatedAuthnRequestType) authnRequest);
 
                     in.getMessage().getState().removeLocalVariable("urn:org:atricore:idbus:sso:protocol:requestedidp");
@@ -790,7 +802,7 @@ public class SingleSignOnProducer extends SSOProducer {
             securityTokenEmissionCtx.setIdentityPlanName(getSTSPlanName());
             securityTokenEmissionCtx.setSpAcs(ed);
             securityTokenEmissionCtx.setAttributeProfile(((SPChannel) channel).getAttributeProfile());
-            securityTokenEmissionCtx.setSpChannelConfig(((SSOIDPMediator)mediator).getChannelConfig(channel.getName()));
+            securityTokenEmissionCtx.setSpChannelConfig((SPChannelConfiguration) mediator.getChannelConfig(channel.getName()));
 
             // Add any proxy principals available
             if (secCtx.getProxyPrincipals() != null)
@@ -911,7 +923,7 @@ public class SingleSignOnProducer extends SSOProducer {
             securityTokenEmissionCtx.setSessionIndex(sessionUuidGenerator.generateId());
             securityTokenEmissionCtx.setSpAcs(ed);
             securityTokenEmissionCtx.setAttributeProfile(((SPChannel) channel).getAttributeProfile());
-            securityTokenEmissionCtx.setSpChannelConfig(((SSOIDPMediator)channel.getIdentityMediator()).getChannelConfig(channel.getName()));
+            securityTokenEmissionCtx.setSpChannelConfig((SPChannelConfiguration) ((SSOIDPMediator)channel.getIdentityMediator()).getChannelConfig(channel.getName()));
 
             // ----------------------------------------------------------------------------------------
             // Authenticate the user, send a RequestSecurityToken to the Security Token Service (STS)
@@ -1032,7 +1044,19 @@ public class SingleSignOnProducer extends SSOProducer {
             if (responseFormat != null && responseFormat.equals("urn:oasis:names:tc:SAML:1.1")) {
                 saml11Response = transformSamlR2ResponseToSaml11(saml2Response);
                 SamlR2Signer signer = ((SSOIDPMediator) channel.getIdentityMediator()).getSigner();
-                saml11Response = signer.sign(saml11Response);
+
+                ChannelConfiguration cfg = mediator.getChannelConfig(channel.getName());
+
+                String digest = null;
+                if (cfg instanceof SPChannelConfiguration) {
+                    digest = ((SPChannelConfiguration) cfg).getSignatureHash();
+                } else if (cfg instanceof IDPChannelConfiguration) {
+                    digest = ((IDPChannelConfiguration) cfg).getSignatureHash();
+                } else {
+                    digest = "SHA256";
+                }
+
+                saml11Response = signer.sign(saml11Response, digest);
             }
 
             // Clear the current authentication state
@@ -1325,7 +1349,7 @@ public class SingleSignOnProducer extends SSOProducer {
                 securityTokenEmissionCtx.setSessionIndex(sessionUuidGenerator.generateId());
                 securityTokenEmissionCtx.setSpAcs(ed);
                 securityTokenEmissionCtx.setAttributeProfile(requiredSpChannel.getAttributeProfile());
-                securityTokenEmissionCtx.setSpChannelConfig(((SSOIDPMediator)mediator).getChannelConfig(requiredSpChannel.getName()));
+                securityTokenEmissionCtx.setSpChannelConfig((SPChannelConfiguration) mediator.getChannelConfig(requiredSpChannel.getName()));
 
                 // in order to request a security token we need to map the claims sent by the proxy to
                 // STS claims
@@ -1515,9 +1539,22 @@ public class SingleSignOnProducer extends SSOProducer {
             // --------------------------------------------------------------------
 
             if (responseFormat != null && responseFormat.equals("urn:oasis:names:tc:SAML:1.1")) {
+
+                ChannelConfiguration cfg = mediator.getChannelConfig(channel.getName());
+
+                String digest = null;
+                if (cfg instanceof SPChannelConfiguration) {
+                    digest = ((SPChannelConfiguration) cfg).getSignatureHash();
+                } else if (cfg instanceof IDPChannelConfiguration) {
+                    digest = ((IDPChannelConfiguration) cfg).getSignatureHash();
+                } else {
+                    digest = "SHA256";
+                }
+
                 saml11Response = transformSamlR2ResponseToSaml11(saml2Response);
                 SamlR2Signer signer = ((SSOIDPMediator) requiredSpChannel.getIdentityMediator()).getSigner();
-                saml11Response = signer.sign(saml11Response);
+
+                saml11Response = signer.sign(saml11Response, digest);
             }
 
             clearAuthnState(exchange);
@@ -2637,12 +2674,14 @@ public class SingleSignOnProducer extends SSOProducer {
 
         for (Claim c : claims.getClaims()) {
 
+            // ignore other non-credential claims
             if (!(c instanceof CredentialClaim)) {
                 if (logger.isTraceEnabled())
                     logger.trace("Ignoring non-credential claim " + c);
                 continue;
             }
 
+            // verify token type
             CredentialClaim credentialClaim = (CredentialClaim) c;
 
             if (logger.isDebugEnabled())
@@ -3003,7 +3042,7 @@ public class SingleSignOnProducer extends SSOProducer {
                     if (logger.isTraceEnabled())
                         logger.trace("Found SSO IDP Initiated endpoint " + ed.getName());
 
-                    // WARN : Overrided locations not supported
+                    // WARN : Override locations not supported
                     String location = targetSpChannel.getLocation() + ed.getLocation();
                     String responseLocation = ed.getResponseLocation() != null ?
                             targetSpChannel.getLocation() + ed.getResponseLocation() : null;

@@ -500,10 +500,15 @@ public class SingleLogoutProducer extends SSOProducer {
         state.removeLocalVariable("urn:org:atricore:idbus:sso:idp:proxySLORequest");
         state.removeLocalVariable("urn:org:atricore:idbus:sso:idp:proxySLORelayState");
 
+
+        // TODO : sloRequest is instanceof IDPProxyInitiatedLogoutRequestType
+
         if (sloRequest instanceof LogoutRequestType ) {
             doProcessSLORequest(exchange, (LogoutRequestType) sloRequest, relayState);
         } else if (sloRequest instanceof IDPInitiatedLogoutRequestType) {
             doProcessIdPInitiatedSLORequest(exchange, (IDPInitiatedLogoutRequestType) sloRequest);
+        } else if (sloRequest instanceof IDPProxyInitiatedLogoutRequestType) {
+            // TODO: Implement!
         } else if ((sloRequest == null)) {
             // IDP Initiated SLO ?
             throw new SSOException("Unknown SLO Request type " + sloRequest);
@@ -576,12 +581,21 @@ public class SingleLogoutProducer extends SSOProducer {
     }
 
     protected StatusResponseType buildSamlSloResponse(CamelMediationExchange exchange,
+                                                      SPChannel spChannel,
                                                       LogoutRequestType sloRequest,
                                                       CircleOfTrustMemberDescriptor sp,
                                                       EndpointDescriptor spEndpoint) throws Exception {
+
+
         // Build sloresponse
         IdentityPlan identityPlan = findIdentityPlanOfType(SamlR2SloRequestToSamlR2RespPlan.class);
         IdentityPlanExecutionExchange idPlanExchange = createIdentityPlanExecutionExchange();
+
+        idPlanExchange.setProperty(VAR_COT, this.getCot());
+        idPlanExchange.setProperty(VAR_COT_MEMBER, spChannel.getMember());
+        idPlanExchange.setProperty(VAR_CHANNEL, spChannel);
+        //idPlanExchange.setProperty(VAR_ENDPOINT, this.endpoint);
+
 
         // Publish SP springmetadata
         idPlanExchange.setProperty(VAR_DESTINATION_COT_MEMBER, sp);
@@ -958,6 +972,13 @@ public class SingleLogoutProducer extends SSOProducer {
                             SSOBinding.SAMLR2_POST,
                             SSOBinding.SAMLR2_ARTIFACT}, true);
 
+            if (sloEd == null) {
+                throw new IdentityMediationFault(StatusCode.TOP_RESPONDER.getValue(),
+                        null,
+                        StatusDetails.NO_DESTINATION.getValue(),
+                        "No SLO endpoint foun for SP " + pSecCtx.getProviderId(), null);
+            }
+
             //
             // Build SLO Request
             LogoutRequestType spSloRequest = buildSamlSloRequest(exchange, secCtx, sloRequest, sp, sloEd);
@@ -1086,8 +1107,15 @@ public class SingleLogoutProducer extends SSOProducer {
                     sloSpBindings,
                     true);
 
+            if (destination == null) {
+                throw new IdentityMediationFault(StatusCode.TOP_RESPONDER.getValue(),
+                        null,
+                        StatusDetails.NO_DESTINATION.getValue(),
+                        "No SLO endpoint foun for SP " + sp, null);
+            }
+
             // TODO : Send partialLogout status code if required
-            ssoResponse = buildSamlSloResponse(exchange, sloRequest, sp, destination);
+            ssoResponse = buildSamlSloResponse(exchange, requiredSpChannel, sloRequest, sp, destination);
         }
 
         // Check if we have to notify the idp selector
@@ -1128,6 +1156,7 @@ public class SingleLogoutProducer extends SSOProducer {
             out.setMessage(new MediationMessageImpl(entityRequest.getID(),
                     entityRequest, "CurrentEntityRequest", null, entitySelectorEndpoint, in.getMessage().getState()));
 
+            state.setLocalVariable(SSOConstants.SSO_RESPONSE_SIGNER_VAR_TMP, state.getAttribute("SAMLR2Signer"));
             state.setLocalVariable(SSOConstants.SSO_RESPONSE_VAR_TMP, ssoResponse != null ? ssoResponse : null);
             state.setLocalVariable(SSOConstants.SSO_RESPONSE_ENDPOINT_VAR_TMP, destination);
             state.setLocalVariable(SSOConstants.SSO_RESPONSE_TYPE_VAR_TMP, ssoResponse != null ? "LogoutResponse" : "LogoutLocation");
@@ -1180,6 +1209,10 @@ public class SingleLogoutProducer extends SSOProducer {
                 Properties auditProps = new Properties();
                 auditProps.put("spId", pSecCtx.getProviderId().getValue());
 
+                if (logger.isDebugEnabled())
+                    logger.debug("Verify if SP requires SLO : " + pSecCtx.getProviderId().getValue());
+
+
                 // Skip from the list the SP that requested SLO, if any
                 if (sloRequest != null &&
                         pSecCtx.getProviderId().getValue().equals(sloRequest.getIssuer().getValue())) {
@@ -1205,7 +1238,7 @@ public class SingleLogoutProducer extends SSOProducer {
 
                 if (localEd != null) {
                     if (logger.isDebugEnabled())
-                        logger.debug("Adding SLO endpoint " + localEd.getName() + " for " + pSecCtx.getProviderId());
+                        logger.debug("Adding SLO endpoint " + localEd.getName() + " for " + pSecCtx.getProviderId().getValue());
 
                     eds.add(localEd);
                 } else {
@@ -1215,14 +1248,14 @@ public class SingleLogoutProducer extends SSOProducer {
 
                     if (soapEd != null) {
                         if (logger.isDebugEnabled())
-                            logger.debug("Adding SLO endpoint " + soapEd.getName() + " for " + pSecCtx.getProviderId());
+                            logger.debug("Adding SLO endpoint " + soapEd.getName() + " for " + pSecCtx.getProviderId().getValue());
                         eds.add(soapEd);
                     }
                 }
 
                 if (eds.size() == 0) {
                     if (logger.isTraceEnabled())
-                        logger.trace("Ignoring SP : No SLO endpoint found : " + pSecCtx.getProviderId());
+                        logger.trace("Ignoring SP : No SLO endpoint found : " + pSecCtx.getProviderId().getValue());
                     continue;
                 }
 

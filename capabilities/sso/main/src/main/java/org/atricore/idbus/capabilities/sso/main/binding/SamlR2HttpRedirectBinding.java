@@ -28,14 +28,15 @@ import org.apache.camel.Message;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.atricore.idbus.capabilities.sso.main.common.AbstractSSOMediator;
+import org.atricore.idbus.capabilities.sso.main.common.ChannelConfiguration;
+import org.atricore.idbus.capabilities.sso.main.idp.SPChannelConfiguration;
+import org.atricore.idbus.capabilities.sso.main.sp.IDPChannelConfiguration;
 import org.atricore.idbus.capabilities.sso.support.binding.SSOBinding;
 import org.atricore.idbus.capabilities.sso.support.core.signature.SamlR2Signer;
 import org.atricore.idbus.capabilities.sso.support.core.util.XmlUtils;
 import org.atricore.idbus.kernel.main.federation.metadata.EndpointDescriptor;
-import org.atricore.idbus.kernel.main.mediation.Channel;
-import org.atricore.idbus.kernel.main.mediation.MediationMessage;
-import org.atricore.idbus.kernel.main.mediation.MediationMessageImpl;
-import org.atricore.idbus.kernel.main.mediation.MediationState;
+import org.atricore.idbus.kernel.main.mediation.*;
 import org.atricore.idbus.kernel.main.mediation.camel.component.binding.AbstractMediationHttpBinding;
 import org.atricore.idbus.kernel.main.mediation.camel.component.binding.CamelMediationMessage;
 import org.w3._1999.xhtml.Html;
@@ -243,10 +244,22 @@ public class SamlR2HttpRedirectBinding extends AbstractMediationHttpBinding {
             MediationState state = samlOut.getMessage().getState();
             SamlR2Signer signer = (SamlR2Signer) state.getAttribute("SAMLR2Signer");
             if (signer != null) {
-                qryString = "?" + signer.signQueryString(qryString);
+                AbstractSSOMediator mediator = (AbstractSSOMediator) channel.getIdentityMediator();
+                ChannelConfiguration cfg = mediator.getChannelConfig(channel.getName());
+                String digest = null;
+                if (cfg instanceof SPChannelConfiguration) {
+                    digest = ((SPChannelConfiguration) cfg).getSignatureHash();
+                } else if (cfg instanceof IDPChannelConfiguration) {
+                    digest = ((IDPChannelConfiguration) cfg).getSignatureHash();
+                } else {
+                    digest = "SHA256";
+                }
+
+                qryString = "?" + signer.signQueryString(qryString, digest);
             } else {
                 qryString = "?" + qryString;
             }
+
 
             Message httpOut = exchange.getOut();
             Message httpIn = exchange.getIn();
@@ -279,17 +292,23 @@ public class SamlR2HttpRedirectBinding extends AbstractMediationHttpBinding {
             throw new RuntimeException(e);
         }
 
-        byte[] deflated = new byte[n];
+        ByteArrayOutputStream deflated = new ByteArrayOutputStream(n);
 
         Deflater deflater = new Deflater(Deflater.DEFAULT_COMPRESSION, true);
         deflater.setInput(redirIs);
         deflater.finish();
-        int len = deflater.deflate(deflated);
+
+        byte[] buff = new byte[1024];
+        int len = deflater.deflate(buff);
+
+        while (len > 0) {
+            deflated.write(buff, 0, len);
+            len = deflater.deflate(buff);
+        }
+
         deflater.end();
 
-        byte[] exact = new byte[len];
-
-        System.arraycopy(deflated, 0, exact, 0, len);
+        byte[] exact = deflated.toByteArray();
 
         if (encode) {
             byte[] base64Str = new Base64().encode(exact);
@@ -311,6 +330,9 @@ public class SamlR2HttpRedirectBinding extends AbstractMediationHttpBinding {
         else
             redirBin = redirStr.getBytes();
 
+        if (redirBin == null || redirBin.length == 0)
+            throw new RuntimeException("Redirect string cannot be null or empty");
+
         // Decompress the bytes
         Inflater inflater = new Inflater(true);
         inflater.setInput(redirBin);
@@ -319,12 +341,16 @@ public class SamlR2HttpRedirectBinding extends AbstractMediationHttpBinding {
 
         try {
             int resultLength = 0;
-            int buffSize= 1024;
-            byte[] buff = new byte[buffSize];
-            while (!inflater.finished()) {
-                resultLength = inflater.inflate(buff);
+            byte[] buff = new byte[1024];
+
+            resultLength = inflater.inflate(buff);
+
+            while (resultLength > 0) {
                 baos.write(buff, 0, resultLength);
+                resultLength = inflater.inflate(buff);
             }
+
+            inflater.end();
 
         } catch (DataFormatException e) {
             throw new RuntimeException("Cannot inflate SAML message : " + e.getMessage(), e);

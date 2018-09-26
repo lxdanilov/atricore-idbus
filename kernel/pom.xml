@@ -51,20 +51,23 @@
         <idbus.bundle.wadi-v2_1_2.version>1.5.0-SNAPSHOT</idbus.bundle.wadi-v2_1_2.version>
         <idbus.bundle.javax-jdo-v3_0.version>1.5.0-SNAPSHOT</idbus.bundle.javax-jdo-v3_0.version>
         
-        <activemq.version>5.3.2</activemq.version>
+        <camel.version>2.22.0</camel.version>
+        <commons-codec.version>1.10</commons-codec.version>
+        <commons-io.version>2.6</commons-io.version>
+        <commons-lang.version>2.6</commons-lang.version>
+        <commons-dbcp.version>1.4_3</commons-dbcp.version>
+        <commons-logging.version>1.2</commons-logging.version>
+        <commons-beanutils.version>1.8.0</commons-beanutils.version>
 
-        <camel.version>1.6.1</camel.version>
-        <commons-codec.version>1.3</commons-codec.version>
-        <commons-dbcp.version>1.3</commons-dbcp.version>
-        <commons-logging.version>1.1.1</commons-logging.version>
         <!--cglib.nodep.version>2.1_3</cglib.nodep.version-->
-        <cxf.version>2.2.2</cxf.version>
+        <cxf.version>3.2.5</cxf.version>
 
         <ehcache-core.version>2.6.8</ehcache-core.version>
-        <karaf.version>2.2.3</karaf.version>
-        <felix.osgi.version>1.4.0</felix.osgi.version>
-        <felix.plugin.version>2.1.0</felix.plugin.version>
+        <karaf.version>4.2.0</karaf.version>
+
+        <felix.plugin.version>3.5.0</felix.plugin.version>
         <felix.webconsole.version>3.1.8</felix.webconsole.version>
+        <felix.framework.version>5.6.10</felix.framework.version>
         <geronimo.wsmetadata.version>1.1.2</geronimo.wsmetadata.version>
         <gshell-version>1.0-alpha-2</gshell-version>
 
@@ -79,11 +82,14 @@
 
         <jbpm.jpdl.version>3.3.1.GA</jbpm.jpdl.version>
         <javax.jdo.version>3.0</javax.jdo.version>
-        <jaxws.api.version>2.1</jaxws.api.version>
+        <javax.mail.version>1.4.5</javax.mail.version>
 
         <jetty.version>6.1.22</jetty.version>
         <junit.version>4.4</junit.version>
         <log4j.version>1.2.16</log4j.version>
+
+        <osgi.version>6.0.0</osgi.version>
+
         <pax-logging.version>1.3.0</pax-logging.version>
         <pax-url.version>0.3.3</pax-url.version>
         <plexus-classworlds.version>1.2-alpha-12</plexus-classworlds.version>
@@ -91,8 +97,8 @@
         <servlet.version>2.4</servlet.version>
         <slf4j.slf4j-log4j12.version>1.5.8</slf4j.slf4j-log4j12.version>
         <slf4j.version>1.4.3</slf4j.version>
-        <servicemix.specs.version>1.2.0</servicemix.specs.version>
-        <!--<spring.version>3.1.0.RELEASE</spring.version>-->
+        <servicemix.specs.version>2.9.0</servicemix.specs.version>
+        <!--<spring.version>4.3.12.RELEASE</spring.version>-->
         <!--<spring.osgi.version>1.2.0</spring.osgi.version>-->
         <xbean.version>3.7</xbean.version>
     </properties>
@@ -191,7 +197,7 @@
 
             <dependency>
                 <groupId>org.apache.servicemix.specs</groupId>
-                <artifactId>org.apache.servicemix.specs.jaxws-api-${jaxws.api.version}</artifactId>
+                <artifactId>org.apache.servicemix.specs.jaxws-api-2.2</artifactId>
                 <version>${servicemix.specs.version}</version>
             </dependency>
 
@@ -200,6 +206,19 @@
                 <artifactId>geronimo-ws-metadata_2.0_spec</artifactId>
                 <version>${geronimo.wsmetadata.version}</version>
             </dependency>
+
+            <dependency>
+                <groupId>org.osgi</groupId>
+                <artifactId>org.osgi.core</artifactId>
+                <version>${osgi.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.karaf.shell</groupId>
+                <artifactId>org.apache.karaf.shell.core</artifactId>
+                <version>${karaf.version}</version>
+            </dependency>
+
 
             <dependency>
                 <groupId>org.apache.camel</groupId>
@@ -243,7 +262,7 @@
 
             <dependency>
                 <groupId>org.apache.camel</groupId>
-                <artifactId>camel-osgi</artifactId>
+                <artifactId>camel-core-osgi</artifactId>
                 <version>${camel.version}</version>
                 <exclusions>
                     <exclusion>
@@ -259,31 +278,10 @@
                 <version>${ehcache-core.version}</version>
             </dependency>
 
-            <!--
-            <dependency>
-                <groupId>org.apache.cxf</groupId>
-                <artifactId>cxf-bundle</artifactId>
-                <version>${cxf.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>org.springframework</groupId>
-                        <artifactId>spring-core</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.springframework</groupId>
-                        <artifactId>spring-beans</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.springframework</groupId>
-                        <artifactId>spring-context</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            -->
             <dependency>
                 <groupId>org.apache.felix</groupId>
-                <artifactId>org.osgi.core</artifactId>
-                <version>${felix.osgi.version}</version>
+                <artifactId>org.apache.felix.framework</artifactId>
+                <version>${felix.framework.version}</version>
             </dependency>
 
             <dependency>
@@ -349,6 +347,11 @@
                         <groupId>org.springframework</groupId>
                         <artifactId>org.springframework.aop</artifactId>
                     </exclusion>
+
+                    <exclusion>
+                        <groupId>org.springframework</groupId>
+                        <artifactId>org.springframework.io</artifactId>
+                    </exclusion>
                     
                 </exclusions>
             </dependency>
@@ -362,6 +365,12 @@
                         <groupId>org.aopalliance</groupId>
                         <artifactId>com.springsource.org.aopallianc</artifactId>
                     </exclusion>
+
+                    <exclusion>
+                        <groupId>org.springframework</groupId>
+                        <artifactId>org.springframework.core</artifactId>
+                    </exclusion>
+
                 </exclusions>
             </dependency>
 
@@ -463,16 +472,17 @@
             </dependency-->
 
             <dependency>
+                <!-- TODO UPGRADE -->
                 <groupId>org.apache.geronimo.specs</groupId>
                 <artifactId>geronimo-jta_1.0.1B_spec</artifactId>
                 <version>1.1</version>
             </dependency>
 
-            <!-- JAXB -->
+            <!-- JAXB TODO UPGRADE -->
             <dependency>
                 <groupId>org.apache.servicemix.specs</groupId>
-                <artifactId>org.apache.servicemix.specs.jaxb-api-2.1</artifactId>
-                <version>${servicemix.specs.version}</version>
+                <artifactId>org.apache.servicemix.specs.jaxb-api-2.2</artifactId>
+                <version>2.9.0</version>
             </dependency>
 
             <dependency>
@@ -482,11 +492,37 @@
             </dependency>
 
             <dependency>
+                <groupId>commons-io</groupId>
+                <artifactId>commons-io</artifactId>
+                <version>${commons-io.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>commons-lang</groupId>
+                <artifactId>commons-lang</artifactId>
+                <version>${commons-lang.version}</version>
+            </dependency>
+
+
+            <dependency>
                 <groupId>commons-dbcp</groupId>
                 <artifactId>commons-dbcp</artifactId>
                 <version>${commons-dbcp.version}</version>
             </dependency>
-            
+
+            <dependency>
+                <groupId>commons-beanutils</groupId>
+                <artifactId>commons-beanutils</artifactId>
+                <version>${commons-beanutils.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>commons-logging</groupId>
+                <artifactId>commons-logging</artifactId>
+                <version>${commons-logging.version}</version>
+            </dependency>
+
+
             <dependency>
                 <groupId>org.apache.xbean</groupId>
                 <artifactId>xbean-spring</artifactId>
@@ -500,15 +536,9 @@
             </dependency>
 
             <dependency>
-                <groupId>org.apache.activemq</groupId>
-                <artifactId>activemq-core</artifactId>
-                <version>${activemq.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>org.apache.camel</groupId>
-                        <artifactId>camel-core</artifactId>
-                    </exclusion>
-                </exclusions>
+                <groupId>javax.mail</groupId>
+                <artifactId>mail</artifactId>
+                <version>${javax.mail.version}</version>
             </dependency>
 
             <!-- Test Dependencies -->
@@ -530,7 +560,7 @@
             <dependency>
                 <groupId>org.apache.servicemix.bundles</groupId>
                 <artifactId>org.apache.servicemix.bundles.jaxb-impl</artifactId>
-                <version>2.1.6_1</version>
+                <version>2.2.11_1</version>
             </dependency>
 
             <dependency>
@@ -602,6 +632,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-war-plugin</artifactId>
+                    <version>3.2.0</version>
                     <configuration>
                         <warSourceDirectory>src/webapp/</warSourceDirectory>
                     </configuration>
@@ -609,7 +640,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-jar-plugin</artifactId>
-                    <version>2.2</version>
+                    <version>3.0.2</version>
                     <configuration>
                         <archive>
                             <manifest>
@@ -622,7 +653,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
-                    <version>2.0.2</version>
+                    <version>3.7.0</version>
                     <configuration>
                         <source>1.6</source>
                         <target>1.6</target>

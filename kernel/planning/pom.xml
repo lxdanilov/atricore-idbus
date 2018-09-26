@@ -58,7 +58,7 @@
 
         <dependency>
             <groupId>org.apache.felix</groupId>
-            <artifactId>org.osgi.core</artifactId>
+            <artifactId>org.apache.felix.framework</artifactId>
             <scope>provided</scope>
         </dependency>
 
@@ -122,7 +122,30 @@
     </dependencies>
 
     <build>
+
+        <resources>
+            <resource>
+                <directory>${project.basedir}/src/main/resources</directory>
+                <includes>
+                    <include>**/*</include>
+                </includes>
+            </resource>
+            <resource>
+                <directory>${project.basedir}/src/main/resources</directory>
+                <filtering>true</filtering>
+                <includes>
+                    <include>**/*.info</include>
+                </includes>
+            </resource>
+        </resources>
+
         <plugins>
+
+            <plugin>
+                <groupId>org.apache.karaf.tooling</groupId>
+                <artifactId>karaf-services-maven-plugin</artifactId>
+            </plugin>
+
             <plugin>
                 <groupId>org.apache.felix</groupId>
                 <artifactId>maven-bundle-plugin</artifactId>
@@ -134,10 +157,13 @@
                         <Bundle-Description>Identity Planning Engine</Bundle-Description>
                         <Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
                         <Export-Package>
-                            org.atricore.idbus.kernel.planning.*,
-                            org.jbpm.*
+                            org.atricore.idbus.kernel.planning*,
+                            org.jbpm*
                         </Export-Package>
-                        <Private-Package>!*</Private-Package>
+                        <Private-Package>
+                            org.atricore.idbus.kernel.planning*,
+                            org.jbpm*
+                        </Private-Package>
                         <Require-Bundle>com.springsource.org.hsqldb</Require-Bundle>
                         <Import-Package>
                             org.apache.commons.logging; version="[1.0,1.1.99)"; provider=paxlogging,
@@ -165,7 +191,7 @@
                             !*
                         </Import-Package>
                         <Embed-Dependency>
-                            *;artifactId=!xml-apis|spring-aop|spring-asm|spring-expression|spring-beans|spring-context|spring-core|xercesImpl|commons-logging|org.springframework.*|org.osgi.*|spring-osgi-*|com.springsource.*|org.atricore.*
+                            *;artifactId=!xml-apis|spring-aop|spring-asm|spring-expression|spring-beans|spring-context|spring-core|xercesImpl|commons-logging|org.springframework.*|org.osgi.*|spring-osgi-*|com.springsource.*|org.atricore.*|org.apache.felix.framework.*
                         </Embed-Dependency>
                         <Embed-Transitive>true</Embed-Transitive>
                         <Spring-Context>*;timeout:=60;wait-for-dependencies:=true;create-asynchronously:=false</Spring-Context>

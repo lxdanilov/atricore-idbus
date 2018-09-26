@@ -125,7 +125,7 @@ public class UsernamePasswordAuthScheme extends AbstractAuthenticationScheme {
     }
 
     /**
-     * The username recieved as UserIdCredential instance, if any.
+     * The username received as UserNameCredential instance, if any.  Otherwise the UserIdCredential
      */
     public Principal getPrincipal() {
 
@@ -248,7 +248,7 @@ public class UsernamePasswordAuthScheme extends AbstractAuthenticationScheme {
         try {
             String v = (String) value;
             if (name.equals(UsernamePasswordCredentialProvider.PASSWORD_CREDENTIAL_NAME))
-            v = createPasswordHash(v, getKnownCredentials());
+                v = createPasswordHash(v, getKnownCredentials());
 
             return super.newEncodedCredential(name, v);
 

@@ -1,9 +1,10 @@
 package org.atricore.idbus.kernel.main.mediation.camel.component.http;
 
 import org.apache.camel.CamelContext;
-import org.apache.camel.component.http.HttpConsumer;
-import org.apache.camel.component.http.HttpExchange;
+import org.apache.camel.Exchange;
 import org.apache.camel.component.jetty.CamelContinuationServlet;
+import org.apache.camel.http.common.HttpConsumer;
+import org.apache.camel.impl.DefaultExchange;
 import org.apache.camel.impl.JndiRegistry;
 import org.apache.camel.spi.Registry;
 import org.apache.commons.io.IOUtils;
@@ -85,7 +86,6 @@ public class OsgiIDBusServlet2 extends CamelContinuationServlet implements IDBus
     private int connectionTimeoutMillis = 5000; // Five seconds
     private int socketTimeoutMillis = 300000; // Five minutes
 
-
     public OsgiIDBusServlet2() {
         super();
     }
@@ -122,8 +122,11 @@ public class OsgiIDBusServlet2 extends CamelContinuationServlet implements IDBus
         }
     }
 
-    @Override
-    protected void service(HttpServletRequest req, HttpServletResponse res)
+
+
+
+
+    protected void serviceTODO(HttpServletRequest req, HttpServletResponse res)
             throws ServletException, IOException {
 
         long started = 0;
@@ -134,12 +137,54 @@ public class OsgiIDBusServlet2 extends CamelContinuationServlet implements IDBus
 
             started = System.currentTimeMillis();
 
-            // Add node ID to response headers
             String nodeId = null;
             if (kernelConfig != null) {
+
+                // Add node ID to response headers
                 nodeId = kernelConfig.getProperty("idbus.node");
                 if(nodeId != null)
                     res.addHeader("X-IdBus-Node", nodeId);
+
+                // Add additional headers
+
+                String xFrameOptions = kernelConfig.getProperty("binding.http.xFrameOptionsMode");
+                if (xFrameOptions != null) {
+
+                    XFrameOptions mode = XFrameOptions.fromValue(xFrameOptions);
+
+                    String xFrameOptoinsURLs = "";
+                    if (kernelConfig.getProperty("binding.http.xFrameOptionsURLs") != null) {
+                        StringTokenizer st = new StringTokenizer(kernelConfig.getProperty("binding.http.xFrameOptionsURLs"), ",");
+                        while (st.hasMoreTokens()) {
+                            String s = st.nextToken();
+                            xFrameOptoinsURLs = xFrameOptoinsURLs + " '" + s + "'";
+                        }
+                    }
+
+
+                    switch(mode) {
+                        case DISABLED:
+                            // Nothing to do
+                            break;
+                        case SAME_ORIGIN:
+                            res.addHeader(IDBusHttpConstants.HTTP_HEADER_FRAME_OPTIONS, mode.getValue());
+                            res.addHeader(IDBusHttpConstants.HTTP_HEADER_CONTENT_SECURITY_POLICY, "frame-ancestors 'self'" + xFrameOptoinsURLs);
+                            break;
+                        case ALLOW_FROM:
+                            res.addHeader(IDBusHttpConstants.HTTP_HEADER_FRAME_OPTIONS, mode.getValue() + xFrameOptoinsURLs);
+                            res.addHeader(IDBusHttpConstants.HTTP_HEADER_CONTENT_SECURITY_POLICY, "frame-ancestors" + xFrameOptoinsURLs);
+                            break;
+                        case DENY:
+                            res.addHeader(IDBusHttpConstants.HTTP_HEADER_FRAME_OPTIONS, mode.getValue());
+                            res.addHeader(IDBusHttpConstants.HTTP_HEADER_CONTENT_SECURITY_POLICY, "frame-ancestors 'none'");
+                            break;
+                        default:
+                            logger.error("Unknown X-Frame-Options mode " + mode.getValue());
+                           break;
+
+                    }
+                }
+
             }
 
             if (internalProcessingPolicy == null) {
@@ -641,7 +686,8 @@ public class OsgiIDBusServlet2 extends CamelContinuationServlet implements IDBus
 
     /**
      * Actually process this request
-     */
+        */
+    @Override
     protected void doService(HttpServletRequest req, HttpServletResponse r)
             throws ServletException, IOException {
 
@@ -680,9 +726,9 @@ public class OsgiIDBusServlet2 extends CamelContinuationServlet implements IDBus
         }
 
         IDBusHttpEndpoint endpoint = (IDBusHttpEndpoint) consumer.getEndpoint();
-        /** Synchrony version : TODO: use this instead of the old one with continuations! */
+        /// Synchrony version : TODO: use this instead of the old one with continuations!
         try {
-            final HttpExchange exchange = new HttpExchange(endpoint, req, res);
+            final Exchange exchange = null; // TODO UPD_15 new DefaultExchange(endpoint, req, res);
 
             if (logger.isTraceEnabled())
                 logger.trace("Triggering camel processors for consumer " + consumer.getPath());
@@ -704,6 +750,7 @@ public class OsgiIDBusServlet2 extends CamelContinuationServlet implements IDBus
 
 
     }
+
 
     protected HttpConsumer resolveConsumer(HttpServletRequest req) {
         HttpConsumer targetConsumer = null;
@@ -760,6 +807,8 @@ public class OsgiIDBusServlet2 extends CamelContinuationServlet implements IDBus
 
         return targetConsumer;
     }
+
+
 
     protected ConfigurationContext lookupKernelConfig() throws ServletException {
 

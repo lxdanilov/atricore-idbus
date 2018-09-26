@@ -21,13 +21,15 @@
 
 package org.atricore.idbus.kernel.main.mediation.camel.logging;
 
+import org.apache.camel.Exchange;
 import org.apache.camel.Message;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.atricore.idbus.kernel.main.federation.metadata.EndpointDescriptor;
 import org.atricore.idbus.kernel.main.mediation.MediationMessage;
+import org.atricore.idbus.kernel.main.mediation.camel.AbstractCamelEndpoint;
 import org.atricore.idbus.kernel.main.mediation.camel.component.binding.CamelMediationEndpoint;
-import org.atricore.idbus.kernel.main.mediation.camel.component.binding.CamelMediationExchange;
+
 import org.atricore.idbus.kernel.main.mediation.camel.component.binding.CamelMediationMessage;
 import org.springframework.beans.factory.InitializingBean;
 
@@ -61,7 +63,7 @@ public class DefaultMediationLogger implements MediationLogger, InitializingBean
                 logger.debug("Logging outgoing ...");
 
             StringBuffer logEntry = new StringBuffer(2048);
-            logEntry.append("\n<message id=\"").append(message.getMessageId()).append("\"direction=\"OUT\">");
+            logEntry.append(" message-id=\"").append(message.getMessageId()).append("\"direction=\"OUT\"");
 
             if (message instanceof CamelMediationMessage) {
                 CamelMediationMessage camlMsg = (CamelMediationMessage) message;
@@ -70,21 +72,19 @@ public class DefaultMediationLogger implements MediationLogger, InitializingBean
                 if (msg != null) {
                     EndpointDescriptor destination = msg.getDestination();
 
-                    logEntry.append("\n\t<message-destination>");
-
                     if (destination != null) {
-                        logEntry.append("\n\t\t<location>").append(destination.getLocation()).append("</location>");
-                        logEntry.append("\n\t\t<resposneLocation>").append(destination.getResponseLocation()).append("</resposneLocation>");
-                        logEntry.append("\n\t\t<binding>").append(destination.getBinding()).append("</binding>");
-                        logEntry.append("\n\t\t<type>").append(destination.getType()).append("</type>");
+                        logEntry.append(" location=\"").append(destination.getLocation()).append("\"");
+                        logEntry.append(" resposneLocation=\"").append(destination.getResponseLocation()).append("\"");
+                        logEntry.append(" binding=\"").append(destination.getBinding()).append("\"");
+                        logEntry.append(" type=\"").append(destination.getType()).append("\"");
                     }
 
-                    logEntry.append("\n\t</message-destination>");
+
                 }
             }
 
             logMessageDetails(message, logEntry);
-            logEntry.append("\n</message>");
+
             log.trace(logEntry.toString());
         }
 
@@ -98,26 +98,32 @@ public class DefaultMediationLogger implements MediationLogger, InitializingBean
                 logger.debug("Logging fault ...");
 
             StringBuffer logEntry = new StringBuffer(2048);
-            logEntry.append("\n<message id=\"").append(message.getMessageId()).append("\"direction=\"OUT\" fault=\"true\" >");
+            logEntry.append(" message id=\"").append(message.getMessageId()).append("\"direction=\"OUT\" fault=\"true\"");
 
             if (message instanceof CamelMediationMessage) {
                 CamelMediationMessage camlMsg = (CamelMediationMessage) message;
+
                 MediationMessage msg = camlMsg.getMessage();
+
+
+
+                Exchange camlExchange = camlMsg.getExchange();
+                CamelMediationEndpoint camlEndpoint = (CamelMediationEndpoint) camlExchange.getFromEndpoint();
 
                 if (msg != null) {
                     EndpointDescriptor destination = msg.getDestination();
 
-                    logEntry.append("\n\t<message-destination>");
-                    logEntry.append("\n\t\t<location>").append(destination.getLocation()).append("</location>");
-                    logEntry.append("\n\t\t<resposneLocation>").append(destination.getResponseLocation()).append("</resposneLocation>");
-                    logEntry.append("\n\t\t<binding>").append(destination.getBinding()).append("</binding>");
-                    logEntry.append("\n\t\t<type>").append(destination.getType()).append("</type>");
-                    logEntry.append("\n\t</message-destination>");
+                    logEntry.append(" channel=\"" + camlEndpoint.getChannelRef() + "\"");
+                    logEntry.append(" location=\"").append(destination.getLocation()).append("\"");
+                    logEntry.append(" resposneLocation=\"").append(destination.getResponseLocation()).append("\"");
+                    logEntry.append(" binding=\"").append(destination.getBinding()).append("\"");
+                    logEntry.append(" type=\"").append(destination.getType()).append("\"");
+
                 }
             }
 
             logMessageDetails(message, logEntry);
-            logEntry.append("\n</message>");
+
             log.trace(logEntry.toString());
         }
     }
@@ -128,28 +134,26 @@ public class DefaultMediationLogger implements MediationLogger, InitializingBean
             if (logger.isDebugEnabled())
                 logger.debug("Logging incoming ...");
 
+
             StringBuffer logEntry = new StringBuffer(2048);
-            logEntry.append("\n<message id=\"").append(message.getMessageId()).append("\" direction=\"IN\">");
+            logEntry.append(" message id=\"").append(message.getMessageId()).append("\" direction=\"IN\"");
 
             if (message instanceof CamelMediationMessage) {
 
                 CamelMediationMessage camlMsg = (CamelMediationMessage) message;
-                CamelMediationExchange camlExchange = camlMsg.getExchange();
-                CamelMediationEndpoint camlEndpoint = camlExchange.getEndpoint();
+                Exchange camlExchange = camlMsg.getExchange();
+                CamelMediationEndpoint camlEndpoint = (CamelMediationEndpoint) camlExchange.getFromEndpoint();
 
-                logEntry.append("\n\t<message-destination>");
-                logEntry.append("\n\t\t<endpoint>");
-                logEntry.append("\n\t\t\t<uri>").append(camlEndpoint.getEndpointUri()).append("</uri>");
-                logEntry.append("\n\t\t\t<binding>").append(camlEndpoint.getBinding()).append("</binding>");
-                logEntry.append("\n\t\t</endpoint>");
-                logEntry.append("\n\t</message-destination>");
+                logEntry.append(" channel=\"" + camlEndpoint.getChannelRef() + "\"");
+                logEntry.append(" endpoint-uri=\"").append(camlEndpoint.getEndpointUri()).append("\"");
+                logEntry.append(" binding=\"").append(camlEndpoint.getBinding()).append("\"");
 
             }
 
             logMessageDetails(message, logEntry);
-            logEntry.append("\n</message>");
+
             log.trace(logEntry.toString());
-            
+
         }
 
     }
@@ -173,9 +177,8 @@ public class DefaultMediationLogger implements MediationLogger, InitializingBean
                         logger.debug("Log Message Builder " + builder+ " produced null or empty log message");
                 }
 
-                logEntry.append("\n\t<message-detail type=\"").append(builder.getType()).append("\">");
-                logEntry.append("\n").append(logMsg);
-                logEntry.append("\n\t</message-detail>");
+                logEntry.append("\n\tmessage-detail type=\"").append(builder.getType()).append("\"");
+                logEntry.append(" ").append(logMsg);
 
             }
         }
